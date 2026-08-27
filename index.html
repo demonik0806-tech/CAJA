@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System | Plataforma Integral AS400 & OFSC</title>
+        
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+                
+        :root {
+            --primary-bg: #111816;
+            --sidebar-bg: #16201c;
+            --accent-color: #34d399;
+            --border-color: #273630;
+        }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--primary-bg); 
+            color: #ffffff; 
+            overflow-x: hidden; 
+            margin: 0;
+        }
+        .sidebar { 
+            background-color: var(--sidebar-bg); 
+            width: 280px; 
+            min-height: 100vh; 
+            border-right: 1px solid rgba(255,255,255,0.05); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+        }
+        .nav-item { 
+            display: flex; align-items: center; padding: 12px 16px; border-radius: 12px; 
+            color: #94a3b8; font-size: 14px; font-weight: 600; transition: all 0.25s ease; 
+            cursor: pointer; margin-bottom: 4px; text-decoration: none; 
+        }
+        .nav-item:hover, .nav-item.active { background-color: #1e2924; color: var(--accent-color); }
+        .nav-item i { width: 24px; margin-right: 10px; }
+        
+        .submenu { 
+            max-height: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0; margin-left: 24px; border-left: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .submenu.open { max-height: 800px; opacity: 1; margin-top: 4px; margin-bottom: 8px; }
+        
+        .submenu-item { 
+            display: flex; align-items: center; padding: 10px 16px; font-size: 13px; 
+            color: #64748b; text-decoration: none; transition: all 0.2s ease; border-radius: 0 10px 10px 0;
+        }
+        .submenu-item:hover, .submenu-item.active-sub { color: var(--accent-color); background: rgba(52, 211, 153, 0.05); transform: translateX(4px); }
+        .chevron-rotate { transition: transform 0.3s ease; }
+        .chevron-rotate.active { transform: rotate(90deg); }
+        
+        #sidebarOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 40; }
+        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #1e2924; border-radius: 10px; }
+
+        .editor-container { background-color: #1a231f; border: 1px solid var(--border-color); border-radius: 12px; overflow-x: auto; margin-top: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .activity-card { background: #111816; border: 1px solid var(--border-color); padding: 20px; border-radius: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; }    
+        .activity-card:hover { border-color: #10b981; background: #1a231f; transform: translateY(-3px); }    
+        .appt-badge { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 4px 12px; border-radius: 8px; font-family: monospace; font-weight: 800; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 14px; }    
+        
+        #otModal, #selectionModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(10px); }    
+        .modal-content { background: #1a231f; width: 90%; max-width: 750px; border-radius: 20px; overflow: hidden; animation: modalSlideUp 0.4s ease-out; border: 1px solid var(--border-color); }        
+        .input-dark { background-color: #111816; border: 1px solid var(--border-color); color: white; font-size: 11px; padding: 10px; border-radius: 6px; width: 100%; outline: none; }    
+        .input-dark:focus { border-color: #10b981; }        
+        .input-auto-ajustable { min-width: 15ch; white-space: nowrap; }
+
+        #bigToast { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(16, 185, 129, 0.98); color: white; padding: 60px 100px; border-radius: 40px; text-align: center; z-index: 10000; box-shadow: 0 0 100px rgba(0,0,0,0.5); }
+        @keyframes modalSlideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }    
+        @keyframes toastFade { 0% { opacity: 0; transform: translate(-50%, -40%); } 15% { opacity: 1; transform: translate(-50%, -50%); } 85% { opacity: 1; transform: translate(-50%, -50%); } 100% { opacity: 0; transform: translate(-50%, -60%); } }    
+        .animate-toast { animation: toastFade 3s forwards; }
+
+        th { font-size: 11px; color: #9ca3af; text-transform: uppercase; padding: 15px; border-bottom: 1px solid var(--border-color); background: #111816; white-space: nowrap; }    
+        td { padding: 8px 10px; }    
+        .btn-plus-red { background: #ef4444; color: white; width: 24px; height: 24px; border-radius: 6px; font-weight: bold; flex-shrink: 0; }
+        
+        input[type="date"], input[type="datetime-local"] { color-scheme: dark; }
+    </style>
+</head>
+<body>
+
+    <!-- VISTA 1: LOGIN CON GPS -->
+    <div id="loginView" class="w-full h-screen flex items-center justify-center relative z-10" style="background-color: #0b110e;">
+        <main class="w-full max-w-sm mx-auto p-4">             
+            <div class="bg-[#16201c] border border-[#273630] p-10 rounded-[2.5rem] shadow-2xl shadow-emerald-900/20 animate__animated animate__fadeInUp">        
+                <div class="text-center mb-10">            
+                    <div class="w-20 h-20 bg-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/30">                
+                        <i class="fas fa-microchip text-white text-3xl"></i>            
+                    </div>            
+                    <h1 class="text-3xl font-black text-white uppercase tracking-tighter">System</h1>            
+                    <p class="text-emerald-400/60 text-xs mt-2 tracking-widest uppercase font-bold">Control de Acceso Seguro</p>        
+                </div>
+                
+                <form id="loginForm" class="space-y-4">            
+                    <div class="relative">                
+                        <input type="text" id="loginUser" placeholder="Usuario" class="w-full bg-[#111816] p-5 rounded-2xl text-white outline-none border border-[#273630] focus:border-emerald-500 font-bold placeholder-gray-500 text-sm" required autocomplete="off">            
+                    </div>                        
+                    <div class="relative">                
+                        <input type="password" id="loginPass" placeholder="Contraseña" class="w-full bg-[#111816] p-5 rounded-2xl text-white outline-none border border-[#273630] focus:border-emerald-500 font-bold placeholder-gray-500 text-sm" required autocomplete="off">            
+                    </div>
+
+                    <button type="submit" id="btnAcceder" disabled class="w-full bg-[#1a231f] border border-[#273630] text-gray-500 font-bold py-5 rounded-2xl transition-all cursor-not-allowed uppercase tracking-widest text-sm mt-4">                
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Esperando Ubicación...            
+                    </button>
+                </form>                
+                
+                <div class="mt-8 text-center flex items-center justify-center gap-2">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <p class="text-gray-600 text-[10px] uppercase tracking-widest font-bold">Plataforma Segura © 2026</p>
+                </div>    
+            </div>
+        </main>
+    </div>
+
+    <!-- VISTA 2: DASHBOARD -->
+    <div id="dashboardView" class="hidden min-h-screen w-full flex">
+        <div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+        <button onclick="toggleSidebar()" class="lg:hidden fixed top-4 left-4 z-[60] bg-emerald-600 p-3 rounded-2xl shadow-lg">        
+            <i class="fas fa-bars text-white text-xl"></i>    
+        </button>
+        
+        <aside id="sidebar" class="sidebar p-6 flex flex-col fixed inset-y-0 left-0 -translate-x-full lg:translate-x-0 lg:sticky lg:top-0 h-screen overflow-hidden">        
+            <div class="mb-10 px-2 flex items-center justify-between">            
+                <div class="flex items-center gap-3">                
+                    <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">                    
+                        <i class="fas fa-microchip text-white"></i>                
+                    </div>                
+                    <h1 class="text-xl font-bold text-white uppercase tracking-tight">System</h1>            
+                </div>            
+                <button onclick="toggleSidebar()" class="lg:hidden text-slate-400">                
+                    <i class="fas fa-times text-2xl"></i>            
+                </button>        
+            </div>
+            
+            <nav class="flex-grow overflow-y-auto pr-2">            
+                <a href="javascript:void(0)" onclick="mostrarVista('home')" class="nav-item active">                
+                    <i class="fas fa-th-large"></i> Dashboard            
+                </a>
+                
+                <div class="mt-8">                
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] px-4 mb-3">Gestión Terreno (OFSC)</p>                                
+                    <div class="nav-item flex justify-between items-center" onclick="toggleSubmenu('ofscSubmenu', 'chevronOfsc')">                    
+                        <span><i class="fas fa-satellite-dish"></i> Gestión OFSC</span>                    
+                        <i id="chevronOfsc" class="fas fa-chevron-right text-[10px] chevron-rotate"></i>                
+                    </div>                                
+                    <div id="ofscSubmenu" class="submenu">                                                                                                        
+                        <a href="javascript:void(0)" onclick="mostrarVista('caja')" class="submenu-item">                        
+                            <i class="fas fa-tools"></i> Caja de Servicios                    
+                        </a>                                                                                                
+                    </div>            
+                </div>
+                
+                <!-- SECCIÓN AS400 - RESTRINGIDA SOLO A ADMIN Y SOPORTE -->
+                <div id="seccionAS400" class="mt-6">                
+                    <p class="text-[10px] font-bold text-orange-500 uppercase tracking-[0.2em] px-4 mb-3">Sistemas Legacy (RR)</p>                                
+                    <div class="nav-item flex justify-between items-center" onclick="toggleSubmenu('rrSubmenu', 'chevronRR')">                    
+                        <span><i class="fas fa-database text-orange-400"></i> Gestión AS400</span>                    
+                        <i id="chevronRR" class="fas fa-chevron-right text-[10px] chevron-rotate"></i>                
+                    </div>                                
+                    <div id="rrSubmenu" class="submenu">                    
+                        <a href="javascript:void(0)" onclick="mostrarVista('as400Asociar')" class="submenu-item">
+                            <i class="fas fa-network-wired text-emerald-400"></i> Asociación de Equipos
+                        </a>
+                        <a href="javascript:void(0)" onclick="mostrarVista('as400Posventa')" class="submenu-item">
+                            <i class="fas fa-file-invoice text-orange-400"></i> Creación de Posventa
+                        </a>
+                        <a href="javascript:void(0)" onclick="mostrarVista('as400Agenda')" class="submenu-item">
+                            <i class="fas fa-calendar-alt text-yellow-400"></i> Reagendamiento / Cancelación
+                        </a>
+                    </div>            
+                </div>
+                
+                <!-- SECCIÓN ADMINISTRACIÓN - RESTRINGIDA SOLO A ADMIN Y SOPORTE -->
+                <div id="seccionAdmin" class="mt-6">                
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] px-4 mb-3">ADMINISTRACIÓN</p>                            
+                    <a href="javascript:void(0)" onclick="abrirModalCrearUsuario()" class="nav-item">
+                        <i class="fas fa-user-plus text-emerald-400"></i> Crear Nuevos Perfiles
+                    </a>
+                </div>        
+            </nav>
+            
+            <div class="mt-auto border-t border-slate-800/40 pt-4 space-y-1">            
+                <a href="javascript:void(0)" onclick="openPasswordModal()" class="nav-item text-slate-500">                
+                    <i class="fas fa-key text-[12px]"></i> Cambiar Clave            
+                </a>            
+                <a href="javascript:location.reload()" class="nav-item text-red-400 hover:bg-red-500/10">                
+                    <i class="fas fa-sign-out-alt text-[12px]"></i> Salir            
+                </a>        
+            </div>    
+        </aside>
+
+        <!-- CONTENIDO DINÁMICO -->
+        <main class="flex-grow p-4 lg:p-10 pt-24 lg:pt-10 w-full">        
+            <div class="max-w-7xl mx-auto animate__animated animate__fadeIn">            
+                
+                <!-- HOME -->
+                <div id="viewHome" class="pb-10">
+                    <header class="mb-10 flex justify-between items-center">        
+                        <div class="animate__animated animate__fadeInLeft">            
+                            <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white">                
+                                Bienvenido, <span class="text-emerald-400" id="userDisplay">Administrador</span>            
+                            </h2>            
+                            <p class="text-slate-500 text-[10px] md:text-sm mt-1 font-medium italic">Nodo Operativo: 192.168.80.87 | Rol: <span id="rolDisplay" class="text-emerald-400 uppercase font-bold"></span></p>        
+                        </div>        
+                    </header>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-12">                
+                        <div class="bg-[#16201c] border border-[#273630] p-6 rounded-3xl">            
+                            <div class="flex justify-between items-start mb-4">                
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20"><i class="fas fa-server"></i></div>                
+                                <span class="px-3 py-1 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-500">ACTIVO</span>            
+                            </div>            
+                            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-3">Servidor</p>            
+                            <p class="text-xl font-black text-white">Proxmox Active</p>        
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CAJA DE SERVICIOS -->
+                <div id="viewCaja" class="hidden pb-10">
+                    <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-black italic text-white uppercase tracking-tighter">Editor <span class="text-emerald-500">Oracle OFSC</span></h1>
+                            <p class="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-1">Caja de Servicios Activa</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="nuevaFila('caja')" class="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl text-xs font-black border border-gray-600 transition-all">+ FILA</button>
+                            <button onclick="sincronizar('caja')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-12 py-3 rounded-xl text-xs font-black uppercase italic shadow-lg shadow-emerald-500/20">Actualizar Oracle</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1a231f] p-6 border border-[#273630] rounded-3xl flex flex-col md:flex-row gap-6 mb-10 shadow-2xl">
+                        <div class="relative flex-grow">
+                            <i class="fas fa-id-card absolute left-6 top-1/2 -translate-y-1/2 text-emerald-500 text-xl"></i>
+                            <input type="text" id="custSearch" placeholder="Ingresar Customer Number..." class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-5 pl-16 text-white text-xl font-bold outline-none focus:border-emerald-500 transition-all">
+                        </div>
+                        <button onclick="buscarActividad()" class="bg-emerald-600 px-16 rounded-2xl font-black text-lg hover:bg-emerald-500 transition-all uppercase italic text-white">Consultar</button>
+                    </div>
+
+                    <div id="editorWrapper" class="editor-container hidden">
+                        <table class="w-full text-left min-w-[1200px]">
+                            <thead>
+                                <tr>
+                                    <th class="w-20 text-center">ROW ID</th>
+                                    <th>Nombre del Servicio</th>
+                                    <th>Descripción Oracle</th>
+                                    <th class="w-32">Acción</th>
+                                    <th class="w-32">Familia</th>
+                                    <th class="w-20 text-center">Tomas</th>
+                                    <th class="text-emerald-400">SSWID</th>
+                                    <th class="min-w-[300px]">Plan / Ubicación / Líneas</th>
+                                    <th class="w-16 text-center">Elim</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mainTbodyCaja" class="divide-y divide-gray-800 text-[11px] font-medium"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- APARTADO 1: AS400 - ASOCIACIÓN DE EQUIPOS -->
+                <div id="viewAs400Asociar" class="hidden pb-10">
+                    <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-black italic text-white uppercase tracking-tighter">AS400 <span class="text-emerald-400">Asociación de Equipos</span></h1>
+                            <p class="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-1">Vinculación rápida de equipos terminales</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="nuevaFila('as400Asociar')" class="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl text-xs font-black border border-gray-600 transition-all">+ FILA</button>
+                            <button onclick="validarYAsociarAS400()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-12 py-3 rounded-xl text-xs font-black uppercase italic shadow-lg shadow-emerald-500/20">Asociar Equipo</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1a231f] p-6 border border-[#273630] rounded-3xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 shadow-2xl">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Número de Cuenta / Contrato</label>
+                            <input type="text" id="as400CuentaAsociar" placeholder="Ej: 98412001" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-emerald-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Serial / MAC Address del Equipo</label>
+                            <input type="text" id="as400SerialAsociar" placeholder="Ej: F6489X201A" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-emerald-300 font-mono font-bold outline-none focus:border-emerald-500 transition-all">
+                        </div>
+                    </div>
+
+                    <div class="editor-container">
+                        <table class="w-full text-left min-w-[1200px]">
+                            <thead>
+                                <tr>
+                                    <th class="w-20 text-center">ROW ID</th>
+                                    <th>Servicios Vinculados</th>
+                                    <th>Descripción Comercial</th>
+                                    <th class="w-32">Acción</th>
+                                    <th class="w-32">Familia</th>
+                                    <th class="w-20 text-center">Tomas</th>
+                                    <th class="text-emerald-400">SSWID</th>
+                                    <th class="min-w-[300px]">Plan / Ubicación / Líneas</th>
+                                    <th class="w-16 text-center">Elim</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mainTbodyAs400Asociar" class="divide-y divide-gray-800 text-[11px] font-medium"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- APARTADO 2: AS400 - CREACIÓN DE POSVENTA -->
+                <div id="viewAs400Posventa" class="hidden pb-10">
+                    <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-black italic text-white uppercase tracking-tighter">AS400 <span class="text-orange-400">Creación de Posventa</span></h1>
+                            <p class="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-1">Detección de red, edición, blindaje/posventa y agendamiento con almanaque</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="crearOTPosventa()" class="bg-orange-600 hover:bg-orange-500 text-white px-12 py-3 rounded-xl text-xs font-black uppercase italic shadow-lg shadow-orange-500/20">Generar Orden y Agendar</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1a231f] p-6 border border-[#273630] rounded-3xl space-y-6 shadow-2xl max-w-3xl">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Número de Cuenta / Contrato</label>
+                                <input type="text" id="as400CuentaPosventa" placeholder="Ej: 98412001" oninput="detectarRedAutomaticamente(this.value)" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-orange-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Tecnología Detectada (Red)</label>
+                                <input type="text" id="redDetectada" readonly placeholder="Esperando cuenta..." class="w-full bg-[#111816]/50 border-2 border-[#273630] rounded-2xl py-4 px-6 text-orange-400 font-black outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Tipo de Gestión (Carpeta)</label>
+                                <select id="tipoCarpeta" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-orange-500 transition-all">
+                                    <option value="BL">BL (Blindaje)</option>
+                                    <option value="PV">PV (Posventa Adicional)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Ítems / Elementos Modificables</label>
+                                <input type="text" id="itemsPosventa" placeholder="Ej: Adición de Deco / Megas / Control" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-orange-500 transition-all">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2"><i class="fas fa-calendar-alt text-orange-400 mr-2"></i> Fecha de Cita (Almanaque)</label>
+                                <input type="date" id="fechaAgendamentoPosventa" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-orange-400 font-bold outline-none focus:border-orange-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2"><i class="fas fa-clock text-orange-400 mr-2"></i> Franja Horaria</label>
+                                <select id="franjaPosventa" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-orange-400 font-black outline-none focus:border-orange-500 transition-all">
+                                    <option value="AM (7:00 a.m. - 1:00 p.m.)">Franja AM (7:00 a.m. - 1:00 p.m.)</option>
+                                    <option value="PM (1:00 p.m. - 6:00 p.m.)">Franja PM (1:00 p.m. - 6:00 p.m.)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Notas Operativas</label>
+                            <input type="text" id="notasPosventa" placeholder="Comentarios adicionales para la OT..." class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-orange-500 transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APARTADO 3: AS400 - REAGENDAMIENTO Y CANCELACIÓN -->
+                <div id="viewAs400Agenda" class="hidden pb-10">
+                    <div class="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-black italic text-white uppercase tracking-tighter">AS400 <span class="text-[#34d399]">Reagendar / Cancelar OT</span></h1>
+                            <p class="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-1">Gestión con selección de franjas AM/PM e indicadores cromáticos</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1a231f] p-6 border border-[#273630] rounded-3xl space-y-6 shadow-2xl max-w-2xl">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Número de Cuenta / Contrato</label>
+                            <input type="text" id="cuentaAgenda" placeholder="Ej: 98412001" oninput="consultarVisitasPendientes(this.value)" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-[#34d399] transition-all">
+                        </div>
+
+                        <div id="visitasPendientesContainer" class="hidden bg-[#111816] border border-[#273630] p-4 rounded-2xl">
+                            <p class="text-[10px] font-bold text-[#34d399] uppercase tracking-widest mb-3"><i class="fas fa-check-square mr-2"></i> Seleccione la visita específica:</p>
+                            <div id="listaVisitas" class="space-y-2"></div>
+                        </div>
+
+                        <div id="nuevaFechaContainer" class="hidden space-y-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-[#34d399] uppercase tracking-widest mb-2"><i class="fas fa-calendar-alt mr-2"></i> Nueva Fecha de Reagendamiento</label>
+                                <input type="date" id="nuevaFechaAgenda" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-[#34d399] font-bold outline-none focus:border-[#34d399] transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-[#34d399] uppercase tracking-widest mb-2"><i class="fas fa-clock mr-2"></i> Nueva Franja Horaria (Reagendamiento)</label>
+                                <select id="nuevaFranjaAgenda" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-[#34d399] font-black outline-none focus:border-[#34d399] transition-all">
+                                    <option value="AM (7:00 a.m. - 1:00 p.m.)">Franja AM (7:00 a.m. - 1:00 p.m.)</option>
+                                    <option value="PM (1:00 p.m. - 6:00 p.m.)">Franja PM (1:00 p.m. - 6:00 p.m.)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Motivo de la Solicitud</label>
+                            <select id="motivoAgenda" class="w-full bg-[#111816] border-2 border-[#273630] rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-[#34d399] transition-all">
+                                <option value="REAGENDA_CLIENTE">Reagendamiento por Solicitud del Cliente</option>
+                                <option value="REAGENDA_TECNICO">Reagendamiento por Demora Técnica</option>
+                                <option value="CANCELA_DUPLICADA">Cancelación por Orden Duplicada</option>
+                                <option value="CANCELA_CLIENTE">Cancelación por Desistimiento del Cliente</option>
+                            </select>
+                        </div>
+
+                        <div class="flex gap-4 pt-2">
+                            <button onclick="ejecutarAccionAgenda('REAGENDA')" class="flex-1 bg-[#34d399] hover:bg-[#10b981] text-[#0b110e] py-4 rounded-xl text-xs font-black uppercase italic shadow-lg transition-all">Reagendar Visita</button>
+                            <button onclick="ejecutarAccionAgenda('CANCELA')" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl text-xs font-black uppercase italic shadow-lg transition-all">Cancelar OT</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>    
+        </main>
+    </div>
+
+    <!-- MODALES -->
+    <div id="bigToast">
+        <h2 id="toastTitle" class="text-2xl font-black italic uppercase">SINCRO</h2>
+        <p id="toastMsg" class="font-bold opacity-80 uppercase tracking-widest text-sm mt-2">Procesando...</p>
+    </div>
+
+    <div id="selectionModal">
+        <div class="modal-content border-t-4 border-emerald-600 shadow-2xl p-6">
+            <div class="flex justify-between items-center pb-4 border-b border-[#273630]">
+                <div>
+                    <h3 class="text-white text-xl font-black uppercase italic">Seleccionar Actividad</h3>
+                    <p class="text-gray-400 text-xs mt-1">Registros en Oracle</p>
+                </div>
+                <button onclick="document.getElementById('selectionModal').style.display='none'" class="text-gray-400 hover:text-white text-3xl">&times;</button>
+            </div>
+            <div id="selectionList" class="py-4 max-h-[400px] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="otModal">
+        <div class="modal-content border-t-4 border-red-600 p-6">
+            <div class="flex justify-between items-center pb-4 border-b border-[#273630] font-black text-white uppercase tracking-widest">
+                <span>Gestión de Servicios - Fila <span id="modalRowTarget"></span></span>
+                <button onclick="cerrarModal()" class="text-3xl">&times;</button>
+            </div>
+            <div class="py-4 max-h-[350px] overflow-y-auto">
+                <table class="w-full"><tbody id="modalTbody" class="divide-y divide-[#273630]"></tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE CONTROL GENERAL -->
+    <script>
+        window.userLatitude = null;
+        window.userLongitude = null;
+        window.currentUser = null;
+        window.currentRol = null;
+
+        const btnAcceder = document.getElementById('btnAcceder');
+        const loginForm = document.getElementById('loginForm');
+
+        // Inicializar almacenamiento de usuarios con roles ('admin', 'soporte', 'operario')
+        if (!localStorage.getItem('system_users')) {
+            const initialUsers = {
+                "admin": { pass: "admin123", rol: "administrador" },
+                "soporte": { pass: "soporte123", rol: "soporte" },
+                "operador": { pass: "12345", rol: "operario" }
+            };
+            localStorage.setItem('system_users', JSON.stringify(initialUsers));
+        }
+
+        function inicializarControlUbicacion() {    
+            if (!navigator.geolocation) {        
+                Swal.fire({ icon: 'error', title: 'GPS No Soportado', text: 'Navegador sin GPS.', background: '#16201c', color: '#fff' });        
+                return;    
+            }
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    window.userLatitude = position.coords.latitude;
+                    window.userLongitude = position.coords.longitude;
+                    btnAcceder.disabled = false;
+                    btnAcceder.innerHTML = 'ACCEDER <i class="fas fa-arrow-right ml-2"></i>';
+                    btnAcceder.className = "w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl transition-all shadow-lg shadow-emerald-500/25 active:scale-95 uppercase tracking-widest text-sm mt-4 cursor-pointer";
+                },
+                function(error) {
+                    btnAcceder.disabled = true;
+                    btnAcceder.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i> GPS Requerido';
+                    Swal.fire({ icon: 'warning', title: 'Ubicación Requerida', text: 'Por favor permite el acceso al GPS para ingresar a System.', background: '#16201c', color: '#fff', confirmButtonColor: '#10b981' })
+                    .then(() => inicializarControlUbicacion());
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        document.addEventListener("DOMContentLoaded", function() { 
+            inicializarControlUbicacion(); 
+            renderTabla('caja');
+            renderTabla('as400Asociar');
+        });
+
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPass').value;
+
+            if(!window.userLatitude) { inicializarControlUbicacion(); return; }
+            if(!user || !pass) return;
+
+            let usersDB = JSON.parse(localStorage.getItem('system_users'));
+
+            if(usersDB[user] && usersDB[user].pass === pass) {
+                window.currentUser = user;
+                window.currentRol = usersDB[user].rol;
+
+                Swal.fire({
+                    title: 'Verificando Sesión', text: 'Validando GPS y Permisos...', background: '#16201c', color: '#fff', timer: 800, showConfirmButton: false,
+                    didOpen: () => { Swal.showLoading(); }
+                }).then(() => {
+                    document.getElementById('loginView').style.display = 'none';
+                    document.getElementById('dashboardView').classList.remove('hidden');
+                    document.getElementById('userDisplay').innerText = user;
+                    document.getElementById('rolDisplay').innerText = window.currentRol;
+
+                    // CONTROL DE VISIBILIDAD SEGÚN ROL (Solo Admin y Soporte ven AS400 y Crear Perfiles)
+                    const seccionAS400 = document.getElementById('seccionAS400');
+                    const seccionAdmin = document.getElementById('seccionAdmin');
+
+                    if (window.currentRol === 'administrador' || window.currentRol === 'soporte') {
+                        seccionAS400.style.display = 'block';
+                        seccionAdmin.style.display = 'block';
+                    } else {
+                        seccionAS400.style.display = 'none';
+                        seccionAdmin.style.display = 'none';
+                    }
+
+                    mostrarVista('home');
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'Usuario o contraseña incorrectos.', background: '#16201c', color: '#fff', confirmButtonColor: '#ef4444' });
+            }
+        });
+
+        function mostrarVista(vista) {
+            // Validar si un operario intenta entrar por enlace directo a vistas prohibidas
+            if ((vista.startsWith('as400') || vista === 'admin') && window.currentRol === 'operario') {
+                Swal.fire({ icon: 'warning', title: 'Acceso Restringido', text: 'No tienes permisos para acceder a este módulo.', background: '#16201c', color: '#fff', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            document.getElementById('viewHome').classList.add('hidden');
+            document.getElementById('viewCaja').classList.add('hidden');
+            document.getElementById('viewAs400Asociar').classList.add('hidden');
+            document.getElementById('viewAs400Posventa').classList.add('hidden');
+            document.getElementById('viewAs400Agenda').classList.add('hidden');
+
+            if(vista === 'home') document.getElementById('viewHome').classList.remove('hidden');
+            if(vista === 'caja') document.getElementById('viewCaja').classList.remove('hidden');
+            if(vista === 'as400Asociar') document.getElementById('viewAs400Asociar').classList.remove('hidden');
+            if(vista === 'as400Posventa') document.getElementById('viewAs400Posventa').classList.remove('hidden');
+            if(vista === 'as400Agenda') document.getElementById('viewAs400Agenda').classList.remove('hidden');
+        }
+
+        function toggleSidebar() {            
+            const sidebar = document.getElementById('sidebar');            
+            const overlay = document.getElementById('sidebarOverlay');            
+            sidebar.classList.toggle('-translate-x-full');            
+            overlay.style.display = sidebar.classList.contains('-translate-x-full') ? 'none' : 'block';        
+        }
+        
+        function toggleSubmenu(menuId, chevronId) {            
+            document.getElementById(menuId).classList.toggle('open');            
+            document.getElementById(chevronId).classList.toggle('active');        
+        }
+
+        function callToast(title, msg, type = "success") {
+            const t = document.getElementById('bigToast');
+            document.getElementById('toastTitle').innerText = title; 
+            document.getElementById('toastMsg').innerText = msg;
+            t.style.background = type === "success" ? "rgba(16, 185, 129, 0.98)" : "rgba(220, 38, 38, 0.98)";
+            t.style.display = 'block'; t.classList.remove('animate-toast'); void t.offsetWidth; t.classList.add('animate-toast');
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        let datosCaja = [
+            { IdCorto: "1", Nombre: "INT_100M;TEL_IL", Desc: "Internet 100 Megas;Telefonía Ilimitada", Accion: "Add", Familia: "INT_TEL", Tomas: "1", SSWID: "SSW98412", TipoPlan: "P3", Ubicacion: "SAL", Lineas: "L1" }
+        ];
+
+        let datosAs400Asociar = [
+            { IdCorto: "1", Nombre: "INT_100M", Desc: "Internet 100 Megas Fibra", Accion: "Add", Familia: "INT_TEL", Tomas: "1", SSWID: "SSW10294", TipoPlan: "P1", Ubicacion: "SAL", Lineas: "L1" }
+        ];
+
+        let serviciosDisponibles = [
+            { cod: "INT_50M", desc: "Internet 50 Megas Residencial", familiaValida: "INT_TEL" },
+            { cod: "INT_100M", desc: "Internet 100 Megas Fibra", familiaValida: "INT_TEL" },
+            { cod: "INT_300M", desc: "Internet 300 Megas Alta Velocidad", familiaValida: "INT_TEL" },
+            { cod: "MAS_MEGAS", desc: "Paquete Adicional de Más Megas de Navegación", familiaValida: "INT_TEL" },
+            { cod: "TEL_IL", desc: "Telefonía Ilimitada Residencial", familiaValida: "INT_TEL" },
+            { cod: "CLARO_BOX", desc: "Claro Box (Decodificador Smart TV)", familiaValida: "TV" },
+            { cod: "DONGLE_4K", desc: "Dongle 4K Streaming", familiaValida: "TV" },
+            { cod: "TV_HD", desc: "Televisión HD Avanzada", familiaValida: "TV" },
+            { cod: "PREMIUM_HBO", desc: "Servicio Premium - Pack HBO", familiaValida: "TV" },
+            { cod: "PREMIUM_WIN", desc: "Servicio Premium - Win Sports+", familiaValida: "TV" }
+        ];
+
+        let contextoActivo = 'caja';
+        let activeIdx = null;
+
+        function renderTabla(tipo) {
+            contextoActivo = tipo;
+            let tbodyId = tipo === 'caja' ? 'mainTbodyCaja' : 'mainTbodyAs400Asociar';
+            let dataset = tipo === 'caja' ? datosCaja : datosAs400Asociar;
+
+            const b = document.getElementById(tbodyId); 
+            b.innerHTML = '';
+
+            dataset.forEach((s, i) => {
+                const tr = document.createElement('tr'); 
+                tr.className = "hover:bg-emerald-500/10 transition-colors";
+                tr.innerHTML = `
+                    <td class="text-center"><input type="text" value="${s.IdCorto}" oninput="actualizarDato('${tipo}', ${i}, 'IdCorto', this.value)" class="input-dark text-center font-black text-emerald-400"></td>
+                    <td><div class="flex items-center gap-2"><input type="text" value="${s.Nombre}" class="input-dark font-black text-white" readonly><button onclick="abrirOT(${i}, '${tipo}')" class="btn-plus-red">+</button></div></td>
+                    <td><input type="text" value="${s.Desc}" class="input-dark text-gray-500" readonly></td>
+                    <td><select onchange="actualizarDato('${tipo}', ${i}, 'Accion', this.value)" class="input-dark font-bold"><option value="Add" ${s.Accion=='Add'?'selected':''}>Add</option><option value="Delete" ${s.Accion=='Delete'?'selected':''}>Delete</option><option value="No cambio" ${s.Accion=='No cambio'?'selected':''}>No cambio</option></select></td>
+                    <td><select onchange="actualizarDato('${tipo}', ${i}, 'Familia', this.value)" class="input-dark font-black text-emerald-400"><option value="INT_TEL" ${s.Familia=='INT_TEL'?'selected':''}>INT_TEL</option><option value="TV" ${s.Familia=='TV'?'selected':''}>TV</option></select></td>
+                    <td><input type="text" value="${s.Tomas}" oninput="actualizarDato('${tipo}', ${i}, 'Tomas', this.value)" class="input-dark text-center"></td>
+                    <td><input type="text" value="${s.SSWID}" oninput="actualizarDato('${tipo}', ${i}, 'SSWID', this.value)" class="input-dark font-mono text-emerald-300"></td>
+                    <td><div class="flex gap-2"><input type="text" placeholder="P" value="${s.TipoPlan}" oninput="actualizarDato('${tipo}', ${i}, 'TipoPlan', this.value)" class="input-dark w-12 text-center"><input type="text" placeholder="U" value="${s.Ubicacion}" oninput="actualizarDato('${tipo}', ${i}, 'Ubicacion', this.value)" class="input-dark w-12 text-center"><input type="text" placeholder="L" value="${s.Lineas}" oninput="actualizarDato('${tipo}', ${i}, 'Lineas', this.value)" class="input-dark flex-grow input-auto-ajustable"></div></td>
+                    <td class="text-center"><button onclick="eliminarFila('${tipo}', ${i})" class="text-red-900 hover:text-red-500 transition-all"><i class="fas fa-trash-alt fa-lg"></i></button></td>`;
+                b.appendChild(tr);
+            });
+        }
+
+        function actualizarDato(tipo, idx, campo, valor) {
+            if(tipo === 'caja') datosCaja[idx][campo] = valor;
+            else if(tipo === 'as400Asociar') datosAs400Asociar[idx][campo] = valor;
+        }
+
+        function nuevaFila(tipo) {
+            let dataset = tipo === 'caja' ? datosCaja : datosAs400Asociar;
+            dataset.push({ IdCorto: (dataset.length + 1), Nombre: '', Desc: '', Accion: 'Add', Familia: 'INT_TEL', Tomas: '0', SSWID: '', TipoPlan: '', Ubicacion: '', Lineas: '' });
+            renderTabla(tipo);
+        }
+
+        function eliminarFila(tipo, idx) {
+            let dataset = tipo === 'caja' ? datosCaja : datosAs400Asociar;
+            dataset.splice(idx, 1);
+            renderTabla(tipo);
+        }
+
+        function abrirOT(idx, tipo) {
+            activeIdx = idx; 
+            contextoActivo = tipo;
+            let dataset = tipo === 'caja' ? datosCaja : datosAs400Asociar;
+            document.getElementById('modalRowTarget').innerText = dataset[idx].IdCorto; 
+            const b = document.getElementById('modalTbody'); 
+            b.innerHTML = '';
+            
+            serviciosDisponibles.forEach(sOT => {
+                const filaActual = dataset[idx];
+                const existe = filaActual.Nombre.split(';').filter(x=>x).includes(sOT.cod);
+                b.innerHTML += `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="p-4">
+                            <div class="text-white font-black text-sm">${sOT.cod}</div>
+                            <div class="text-[10px] text-gray-400 font-medium">${sOT.desc}</div>
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="flex gap-4 justify-end">
+                                <button onclick="modificarServicio('${sOT.cod}','${sOT.desc}','del','${sOT.familiaValida}')" class="w-10 h-10 rounded-xl bg-red-600/20 text-red-500 font-black ${existe?'':'opacity-10'}" ${existe?'':'disabled'}>-</button>
+                                <button onclick="modificarServicio('${sOT.cod}','${sOT.desc}','add','${sOT.familiaValida}')" class="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black">+</button>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+            document.getElementById('otModal').style.display = 'flex';
+        }
+
+        function modificarServicio(c, d, m, familiaServicio) {
+            let dataset = contextoActivo === 'caja' ? datosCaja : datosAs400Asociar;
+            let r = dataset[activeIdx]; 
+            let n = r.Nombre ? r.Nombre.split(';').filter(x=>x) : []; 
+            let ds = r.Desc ? r.Desc.split(';').filter(x=>x) : [];
+
+            if(m==='add' && !n.includes(c)) { 
+                n.push(c); 
+                ds.push(d); 
+            } else if(m==='del') { 
+                let i = n.indexOf(c); 
+                if(i > -1){ 
+                    n.splice(i,1); 
+                    ds.splice(i,1); 
+                } 
+            }
+            r.Nombre = n.join(';'); 
+            r.Desc = ds.join(';'); 
+            renderTabla(contextoActivo); 
+            abrirOT(activeIdx, contextoActivo);
+        }
+
+        function cerrarModal() { document.getElementById('otModal').style.display = 'none'; }
+        function sincronizar(tipo) { callToast("COMPLETADO", `Sincronización de ${tipo.toUpperCase()} exitosa.`); }
+
+        function detectarRedAutomaticamente(cuenta) {
+            const inputRed = document.getElementById('redDetectada');
+            if(!cuenta || cuenta.length < 3) {
+                inputRed.value = '';
+                return;
+            }
+            let tecnologia = parseInt(cuenta) % 2 === 0 ? 'FTTH (Fibra Óptica)' : 'HFC (Coaxial / Nodo)';
+            inputRed.value = tecnologia;
+        }
+
+        function validarYAsociarAS400() {
+            const cuenta = document.getElementById('as400CuentaAsociar').value;
+            const serial = document.getElementById('as400SerialAsociar').value;
+
+            if(!cuenta || !serial) {
+                Swal.fire({ icon: 'error', title: 'Datos Incompletos', text: 'Debe ingresar la Cuenta y el Serial del equipo.', background: '#16201c', color: '#fff', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Asociando Equipo',
+                text: `Vinculando terminal a la cuenta ${cuenta}...`,
+                background: '#16201c',
+                color: '#fff',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            setTimeout(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Equipo Asociado!',
+                    html: `Cuenta: <b>${cuenta}</b><br>Serial: <b>${serial}</b><br><span class="text-emerald-400 text-xs mt-2 block">Asociación completada correctamente en AS400.</span>`,
+                    background: '#16201c',
+                    color: '#fff',
+                    confirmButtonColor: '#10b981'
+                });
+            }, 1000);
+        }
+
+        function crearOTPosventa() {
+            const cuenta = document.getElementById('as400CuentaPosventa').value;
+            const red = document.getElementById('redDetectada').value;
+            const carpeta = document.getElementById('tipoCarpeta').value;
+            const items = document.getElementById('itemsPosventa').value;
+            const fecha = document.getElementById('fechaAgendamentoPosventa').value;
+            const franja = document.getElementById('franjaPosventa').value;
+            const notas = document.getElementById('notasPosventa').value;
+
+            if(!cuenta || !red) {
+                Swal.fire({ icon: 'error', title: 'Cuenta Requerida', text: 'Ingrese un número de cuenta válido para detectar la infraestructura.', background: '#16201c', color: '#fff', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            if(!fecha) {
+                Swal.fire({ icon: 'warning', title: 'Fecha Requerida', text: 'Por favor seleccione una fecha en el almanaque.', background: '#16201c', color: '#fff', confirmButtonColor: '#f59e0b' });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Generando Orden y Agendando',
+                text: `Registrando en carpeta ${carpeta}...`,
+                background: '#16201c',
+                color: '#fff',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            setTimeout(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡OT de Posventa Generada y Agendada!',
+                    html: `Cuenta: <b>${cuenta}</b><br>Red: <b class="text-orange-400">${red}</b><br>Carpeta: <b class="text-emerald-400">${carpeta}</b><br>Ítems: <b>${items || 'Ninguno'}</b><br>Cita Agendada: <b class="text-[#34d399]">${fecha} (${franja})</b><br>Notas: <i class="text-gray-300">"${notas || 'Sin notas'}"</i>`,
+                    background: '#16201c',
+                    color: '#fff',
+                    confirmButtonColor: '#10b981'
+                });
+            }, 1000);
+        }
+
+        function consultarVisitasPendientes(cuenta) {
+            const container = document.getElementById('visitasPendientesContainer');
+            const fechaContainer = document.getElementById('nuevaFechaContainer');
+            const lista = document.getElementById('listaVisitas');
+            lista.innerHTML = '';
+
+            if(!cuenta || cuenta.length < 3) {
+                container.style.display = 'none';
+                fechaContainer.style.display = 'none';
+                return;
+            }
+
+            setTimeout(() => {
+                let visitasMock = [
+                    { id: "OT-98211", fecha: "2026-06-10 (Franja AM: 7:00 a.m. - 1:00 p.m.)", tipo: "Visita Técnica (Posventa Adicional)", estado: "Pendiente" },
+                    { id: "OT-98452", fecha: "2026-06-15 (Franja PM: 1:00 p.m. - 6:00 p.m.)", tipo: "Blindaje de Red", estado: "Futura" }
+                ];
+
+                visitasMock.forEach(v => {
+                    lista.innerHTML += `
+                        <label class="p-3 bg-[#1a231f] rounded-xl border border-[#273630] flex items-center justify-between cursor-pointer hover:border-[#34d399] transition-all">
+                            <div class="flex items-center gap-3">
+                                <input type="radio" name="visitaSeleccionada" value="${v.id}" class="accent-[#34d399] w-4 h-4">
+                                <div>
+                                    <span class="text-xs font-black text-white">${v.id} - ${v.tipo}</span>
+                                    <div class="text-[10px] text-gray-400"><i class="fas fa-clock text-[#34d399] mr-1"></i> ${v.fecha}</div>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[9px] bg-[#34d399]/20 text-[#34d399] font-black">${v.estado}</span>
+                        </label>`;
+                });
+                container.style.display = 'block';
+                fechaContainer.style.display = 'block';
+            }, 400);
+        }
+
+        function ejecutarAccionAgenda(accion) {
+            const cuenta = document.getElementById('cuentaAgenda').value;
+            const motivo = document.getElementById('motivoAgenda').value;
+            const nuevaFecha = document.getElementById('nuevaFechaAgenda').value;
+            const nuevaFranja = document.getElementById('nuevaFranjaAgenda').value;
+            const visitaSeleccionada = document.querySelector('input[name="visitaSeleccionada"]:checked');
+
+            if(!cuenta) {
+                Swal.fire({ icon: 'error', title: 'Cuenta Requerida', text: 'Debe ingresar el número de cuenta.', background: '#16201c', color: '#fff', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            if(!visitaSeleccionada) {
+                Swal.fire({ icon: 'warning', title: 'Seleccione una Visita', text: 'Debe marcar la visita específica que desea reagendar o cancelar.', background: '#16201c', color: '#fff', confirmButtonColor: '#f59e0b' });
+                return;
+            }
+
+            if(accion === 'REAGENDA' && !nuevaFecha) {
+                Swal.fire({ icon: 'warning', title: 'Nueva Fecha Requerida', text: 'Seleccione la nueva fecha en el almanaque.', background: '#16201c', color: '#fff', confirmButtonColor: '#f59e0b' });
+                return;
+            }
+
+            const otId = visitaSeleccionada.value;
+            const esReagendar = accion === 'REAGENDA';
+            const tituloAccion = esReagendar ? 'Reagendando Visita' : 'Cancelando Orden de Trabajo';
+            const colorModalBg = '#16201c';
+            const colorIcono = esReagendar ? '#34d399' : '#c084fc';
+            const colorTextoDestacado = esReagendar ? 'text-[#34d399]' : 'text-purple-400';
+            
+            const mensajeExito = esReagendar 
+                ? `La orden <b>${otId}</b> fue reagendada para el <b>${nuevaFecha} (${nuevaFranja})</b>.` 
+                : `La orden <b>${otId}</b> ha sido cancelada correctamente.`;
+
+            Swal.fire({
+                title: `<span style="color: ${colorIcono}">${tituloAccion}</span>`,
+                html: `Procesando cambio para orden ${otId}...`,
+                background: colorModalBg,
+                color: '#fff',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            setTimeout(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: `<span style="color: ${colorIcono}">${tituloAccion} Exitoso</span>`,
+                    html: `Cuenta: <b>${cuenta}</b><br>OT Afectada: <b class="${colorTextoDestacado}">${otId}</b><br>Motivo: <b>${motivo}</b><br><span class="${colorTextoDestacado} text-xs mt-2 block">${mensajeExito}</span>`,
+                    background: colorModalBg,
+                    color: '#fff',
+                    confirmButtonColor: esReagendar ? '#34d399' : '#9333ea'
+                });
+            }, 1000);
+        }
+
+        function buscarActividad() {
+            const customerNumber = document.getElementById('custSearch').value;
+            if(!customerNumber) return callToast("AVISO", "Ingrese un número de cliente.", "error");
+            callToast("Buscando", "Consultando en Oracle Cloud...");
+            setTimeout(() => {
+                const itemsMock = [
+                    { apptNumber: "OT-998412", status: "started", date: "2026-06-06", activityType: "Instalación", activityId: "ACT-5582" }
+                ];
+                mostrarSeleccion(itemsMock);
+            }, 600);
+        }
+
+        function mostrarSeleccion(items) {
+            const list = document.getElementById('selectionList'); list.innerHTML = '';
+            items.forEach(item => {
+                list.innerHTML += `<div class="activity-card" onclick="document.getElementById('selectionModal').style.display='none'; renderTabla('caja'); document.getElementById('editorWrapper').classList.remove('hidden'); callToast('CARGADO', 'Actividad cargada.');">
+                    <div class="flex-grow"><div class="flex items-center gap-3 mb-2"><span class="appt-badge">${item.apptNumber}</span><span class="text-xs text-emerald-400 font-bold">${item.status}</span></div>
+                    <p class="text-white text-xs">Tipo: ${item.activityType} - Fecha: ${item.date}</p></div>
+                    <button class="bg-emerald-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Editar</button></div>`;
+            });
+            document.getElementById('selectionModal').style.display = 'flex';
+        }
+
+        // MÓDULO DE CREACIÓN DE USUARIOS CON SELECCIÓN DE ROL
+        function abrirModalCrearUsuario() {
+            if (window.currentRol !== 'administrador' && window.currentRol !== 'soporte') {
+                Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'No tienes privilegios para crear nuevos usuarios.', background: '#16201c', color: '#fff', confirmButtonColor: '#ef4444' });
+                return;
+            }
+
+            Swal.fire({
+                title: '<span class="text-emerald-400">Crear Nuevo Perfil</span>',
+                html: `
+                    <div class="text-left space-y-4 pt-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nombre de Usuario</label>
+                            <input type="text" id="nuevoUser" class="w-full bg-[#111816] border border-[#273630] rounded-xl p-3 text-white text-sm font-bold outline-none focus:border-emerald-500" placeholder="Ej: tecnico_nuevo">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contraseña</label>
+                            <input type="password" id="nuevoPass" class="w-full bg-[#111816] border border-[#273630] rounded-xl p-3 text-white text-sm font-bold outline-none focus:border-emerald-500" placeholder="••••••••">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Rol / Permisos</label>
+                            <select id="nuevoRol" class="w-full bg-[#111816] border border-[#273630] rounded-xl p-3 text-emerald-400 text-sm font-bold outline-none focus:border-emerald-500">
+                                <option value="operario">Operario (Sin acceso a AS400)</option>
+                                <option value="soporte">Soporte (Con acceso a AS400)</option>
+                                <option value="administrador">Administrador (Control total)</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                background: '#16201c',
+                color: '#fff',
+                showCancelButton: true,
+                confirmButtonText: 'Crear Usuario',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#374151',
+                preConfirm: () => {
+                    const u = document.getElementById('nuevoUser').value.trim();
+                    const p = document.getElementById('nuevoPass').value;
+                    const r = document.getElementById('nuevoRol').value;
+                    if (!u || !p) {
+                        Swal.showValidationMessage('Por favor completa usuario y contraseña.');
+                    }
+                    return { u, p, r };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const { u, p, r } = result.value;
+                    let usersDB = JSON.parse(localStorage.getItem('system_users'));
+                    if (usersDB[u]) {
+                        Swal.fire({ icon: 'error', title: 'Usuario existente', text: 'Ese nombre de usuario ya está registrado.', background: '#16201c', color: '#fff', confirmButtonColor: '#10b981' });
+                    } else {
+                        usersDB[u] = { pass: p, rol: r };
+                        localStorage.setItem('system_users', JSON.stringify(usersDB));
+                        Swal.fire({ icon: 'success', title: '¡Usuario Creado!', text: `El perfil "${u}" (${r}) se ha creado con éxito.`, background: '#16201c', color: '#fff', confirmButtonColor: '#10b981' });
+                    }
+                }
+            });
+        }
+
+        // CAMBIAR CLAVE
+        function openPasswordModal() {
+            Swal.fire({
+                title: '<span class="text-emerald-400">Cambiar Contraseña</span>',
+                html: `
+                    <div class="text-left space-y-4 pt-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contraseña Actual</label>
+                            <input type="password" id="claveActual" class="w-full bg-[#111816] border border-[#273630] rounded-xl p-3 text-white text-sm font-bold outline-none focus:border-emerald-500" placeholder="••••••••">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nueva Contraseña</label>
+                            <input type="password" id="claveNueva" class="w-full bg-[#111816] border border-[#273630] rounded-xl p-3 text-white text-sm font-bold outline-none focus:border-emerald-500" placeholder="••••••••">
+                        </div>
+                    </div>
+                `,
+                background: '#16201c',
+                color: '#fff',
+                showCancelButton: true,
+                confirmButtonText: 'Actualizar Clave',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#374151',
+                preConfirm: () => {
+                    const actual = document.getElementById('claveActual').value;
+                    const nueva = document.getElementById('claveNueva').value;
+                    if (!actual || !nueva) {
+                        Swal.showValidationMessage('Por favor completa todos los campos.');
+                    }
+                    return { actual, nueva };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const { actual, nueva } = result.value;
+                    let usersDB = JSON.parse(localStorage.getItem('system_users'));
+
+                    if (usersDB[window.currentUser].pass === actual) {
+                        usersDB[window.currentUser].pass = nueva;
+                        localStorage.setItem('system_users', JSON.stringify(usersDB));
+                        Swal.fire({ icon: 'success', title: '¡Clave Actualizada!', text: 'Tu contraseña ha sido cambiada correctamente.', background: '#16201c', color: '#fff', confirmButtonColor: '#10b981' });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'La contraseña actual no es correcta.', background: '#16201c', color: '#fff', confirmButtonColor: '#ef4444' });
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
